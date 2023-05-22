@@ -1,7 +1,7 @@
 use rand::seq::IteratorRandom;
 use std::{
     fs::File,
-    io::{self, BufRead, BufReader, Read},
+    io::{self, BufRead, BufReader},
 };
 
 const FILENAME: &str = "words.txt";
@@ -13,7 +13,7 @@ struct Wordle {
 }
 
 impl Wordle {
-    fn new(word: String) -> Wordle {
+    fn new() -> Wordle {
         Wordle {
             word: get_random_line_from_file(FILENAME),
             bad_chars: Vec::new(),
@@ -48,7 +48,7 @@ impl Wordle {
 
         println!("Good: {:?}\nBad: {:?}",self.good_chars,self.bad_chars);
         
-        if !matching_letters.contains(&false) {
+        if !matching_letters.contains(&false) && guess.len() == 5 {
             println!("you win!")
         }
     }
@@ -78,7 +78,7 @@ fn get_random_line_from_file(filename: &str) -> String {
 }
 
 fn main() {
-    let mut wordle = Wordle::new(String::from(""));
+    let mut wordle = Wordle::new();
 
     loop {
         let mut guess = String::new();
