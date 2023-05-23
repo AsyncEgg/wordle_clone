@@ -1,7 +1,7 @@
 use rand::seq::IteratorRandom;
 use std::{
     fs::File,
-    io::{self, BufRead, BufReader},
+    io::{self, BufRead, BufReader}, collections::HashMap,
 };
 
 const FILENAME: &str = "words.txt";
@@ -10,6 +10,7 @@ struct Wordle {
     word: String,
     bad_chars: Vec<char>,
     good_chars: Vec<char>,
+    where_chars_go: HashMap<u32, Vec<char>>
 }
 
 impl Wordle {
@@ -18,6 +19,7 @@ impl Wordle {
             word: get_random_line_from_file(FILENAME),
             bad_chars: Vec::new(),
             good_chars: Vec::new(),
+            where_chars_go: HashMap::new(),
         }
     }
 
@@ -30,19 +32,12 @@ impl Wordle {
 
         println!("{:?}", matching_letters);
 
-        matching_letters.iter().enumerate().for_each(|(i, b)| {
-            let letter = guess[i];
-            match b {
-                true => {
-                    if !self.good_chars.contains(&letter) {
-                        self.good_chars.push(letter)
-                    }
-                }
-                false => {
-                    if !self.bad_chars.contains(&letter) {
-                        self.bad_chars.push(letter)
-                    }
-                }
+        guess.iter().for_each(|c |{
+            if word.contains(c) && (!self.good_chars.contains(c)) {
+                self.good_chars.push(*c)
+            }  
+            if !word.contains(c) && (!self.bad_chars.contains(c)) {
+                self.bad_chars.push(*c)
             }
         });
 
@@ -79,7 +74,7 @@ fn get_random_line_from_file(filename: &str) -> String {
 
 fn main() {
     let mut wordle = Wordle::new();
-
+    println!("{}",wordle.word);
     loop {
         let mut guess = String::new();
         io::stdin()
