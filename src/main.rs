@@ -6,11 +6,25 @@ use std::{
 
 const FILENAME: &str = "words.txt";
 
+enum LetterMatch {
+    BelongHere
+    NotBelongHere
+    BelongSomewhereElse
+}
+
+enum GameState {
+    Guessing,
+    Lost,
+    Won,
+}
+
 struct Wordle {
     word: String,
     bad_chars: Vec<char>,
-    good_chars: Vec<char>,
-    where_chars_go: HashMap<u32, Vec<char>>
+    good_chars: Vec<char>, //TODO ADD LOGIC TO USE LETTERMATCH INSTEAD OF BOOLS
+    where_chars_go: HashMap<u32, Vec<bool>>,
+    game_state: GameState,
+    number_of_guesses: u32,
 }
 
 impl Wordle {
@@ -20,6 +34,8 @@ impl Wordle {
             bad_chars: Vec::new(),
             good_chars: Vec::new(),
             where_chars_go: HashMap::new(),
+            game_state: GameState::Guessing,
+            number_of_guesses: 5,
         }
     }
 
@@ -40,8 +56,6 @@ impl Wordle {
                 self.bad_chars.push(*c)
             }
         });
-
-        println!("Good: {:?}\nBad: {:?}",self.good_chars,self.bad_chars);
         
         if !matching_letters.contains(&false) && guess.len() == 5 {
             println!("you win!")
@@ -75,6 +89,7 @@ fn get_random_line_from_file(filename: &str) -> String {
 fn main() {
     let mut wordle = Wordle::new();
     println!("{}",wordle.word);
+
     loop {
         let mut guess = String::new();
         io::stdin()
