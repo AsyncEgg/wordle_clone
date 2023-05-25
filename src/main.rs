@@ -143,7 +143,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
 
     for x in 0..5 {
         let horizontal_chunks = Layout::default()
-            .direction(Direction::Horizontal)
+            .direction(Direction::Vertical)
             .margin(0)
             .constraints(
                 [
