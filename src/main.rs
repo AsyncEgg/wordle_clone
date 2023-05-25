@@ -1,115 +1,189 @@
-use rand::seq::IteratorRandom;
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{self, BufRead, BufReader},
-};
+use wordle_clone::{Wordle, GameState};
 
-const FILENAME: &str = "words.txt";
-
-#[derive(PartialEq, Debug)]
-enum LetterMatch {
-    Belongs,
-    NotInWord,
-    BelongsElsewhere,
-}
-
-enum GameState {
-    Guessing,
-    Lost,
-    Won,
-}
-
-struct Wordle {
-    word: String,
-    bad_chars: Vec<char>,
-    good_chars: Vec<char>, //TODO ADD LOGIC TO USE LETTERMATCH INSTEAD OF BOOLS
-    guesses_map: HashMap<u32, (String, Vec<LetterMatch>)>,
-    game_state: GameState,
-    number_of_guesses: u32,
-}
-
-impl Wordle {
-    fn new() -> Wordle {
-        Wordle {
-            word: get_random_line_from_file(FILENAME),
-            bad_chars: Vec::new(),
-            good_chars: Vec::new(),
-            guesses_map: HashMap::new(),
-            game_state: GameState::Guessing,
-            number_of_guesses: 5,
-        }
-    }
-
-    fn submit_and_test_guess(&mut self, guess: String) {
-        let vec_guess: Vec<char> = guess.chars().collect();
-
-        let vec_word: Vec<char> = self.word.chars().collect();
-
-        let matching_letters = compare_vec(&vec_guess, &vec_word);
-
-        if !matching_letters.contains(&LetterMatch::NotInWord)
-            && !matching_letters.contains(&LetterMatch::BelongsElsewhere)
-            && guess.len() == 5
-        {
-            self.game_state = GameState::Won
-        }
-
-        self.guesses_map.insert(self.guesses_map.len() as u32, (guess, matching_letters));
-
-        vec_guess.iter().for_each(|c| {
-            if vec_word.contains(c) && (!self.good_chars.contains(c)) {
-                self.good_chars.push(*c)
-            }
-            if !vec_word.contains(c) && (!self.bad_chars.contains(c)) {
-                self.bad_chars.push(*c)
-            }
-        });
-    }
-
-    fn new_random_word(&mut self) {
-        self.word = get_random_line_from_file(FILENAME);
-    }
-}
-
-fn compare_vec<T: std::cmp::PartialEq>(a: &Vec<T>, b: &Vec<T>) -> Vec<LetterMatch> {
-    a.iter()
-        .zip(b.iter())
-        .map(|(x, y)| {
-            if x == y {
-                LetterMatch::Belongs
-            } else if (x != y) && (!b.contains(x)) {
-                LetterMatch::NotInWord
-            } else {
-                LetterMatch::BelongsElsewhere
-            }
-        })
-        .collect::<Vec<LetterMatch>>()
-}
-
-fn get_random_line_from_file(filename: &str) -> String {
-    let f =
-        File::open(filename).unwrap_or_else(|e| panic!("Error opening file {}: {}", FILENAME, e));
-    let f = BufReader::new(f);
-
-    let lines = f.lines().map(|l| l.expect("Error reading line"));
-
-    lines
-        .choose(&mut rand::thread_rng())
-        .expect("File had no lines")
-}
-
-fn main() {
-    let mut wordle = Wordle::new();
-    println!("{}", wordle.word);
+fn nm() {
+    let mut wordle = Wordle::default();
 
     loop {
-        let mut guess = String::new();
-        io::stdin()
-            .read_line(&mut guess)
-            .expect("Failed to read input");
-        let guess = String::from(guess.trim());
-        wordle.submit_and_test_guess(guess);
+        match wordle.game_state {
+            GameState::Guessing => {
+                let mut guess = String::new();
+                io::stdin()
+                    .read_line(&mut guess)
+                    .expect("Failed to read input");
+                let guess = String::from(guess.trim());
+                wordle.submit_and_test_guess(guess);
+            }
+            GameState::Lost => {
+                println!("You lose!; Correct word was: {}", wordle.word);
+                break
+            },
+            GameState::Won => {
+                println!("You win!");
+                break
+            },
+        }
+
         println!("{:#?}", wordle.guesses_map)
     }
+}
+
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use std::{error::Error, io};
+use tui::{
+    backend::{Backend, CrosstermBackend},
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Span, Spans, Text},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame, Terminal,
+};
+use unicode_width::UnicodeWidthStr;
+
+enum AppMode {
+    Normal,
+    Editing,
+}
+
+struct App {
+    input: String,
+    app_mode: AppMode,
+    wordle: Wordle,
+}
+
+impl Default for App {
+    fn default() -> App {
+        App {
+            input: String::new(),
+            app_mode: AppMode::Normal,
+            wordle: Wordle::default()
+        }
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let app = App::default();
+    let res = run_app(&mut terminal, app);
+
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    if let Err(err) = res {
+        println!("{:?}", err)
+    }
+
+    Ok(())
+}
+
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+    loop {
+        terminal.draw(|f| ui(f, &app))?;
+
+        if let Event::Key(key) = event::read()? {
+            match app.app_mode {
+                AppMode::Normal => match key.code {
+                    KeyCode::Char('e') => {
+                        app.app_mode = AppMode::Editing;
+                    }
+                    KeyCode::Char('q') => {
+                        return Ok(());
+                    }
+                    _ => {}
+                },
+                AppMode::Editing => match key.code {
+                    KeyCode::Enter => {
+                        app.wordle.submit_and_test_guess(app.input.drain(..).collect());
+                    }
+                    KeyCode::Char(c) => {
+                        app.input.push(c);
+                    }
+                    KeyCode::Backspace => {
+                        app.input.pop();
+                    }
+                    KeyCode::Esc => {
+                        app.app_mode = AppMode::Normal;
+                    }
+                    _ => {}
+                },
+            }
+        }
+    }
+}
+
+fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints(
+            [
+                Constraint::Length(1),
+                Constraint::Min(1),
+                Constraint::Length(3),
+            ]
+            .as_ref(),
+        )
+        .split(f.size());
+
+    let (msg, style) = match app.app_mode {
+        AppMode::Normal => (
+            vec![
+                Span::raw("Press "),
+                Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to exit, "),
+                Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to start editing."),
+            ],
+            Style::default().add_modifier(Modifier::RAPID_BLINK),
+        ),
+        AppMode::Editing => (
+            vec![
+                Span::raw("Press "),
+                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to stop editing, "),
+                Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to record the message"),
+            ],
+            Style::default(),
+        ),
+    };
+
+    match app.app_mode {
+        AppMode::Normal =>
+            {}
+
+        AppMode::Editing => {
+            f.set_cursor(
+                chunks[1].x + app.input.width() as u16 + 1,
+                chunks[1].y + 7,
+            )
+        }
+    }
+
+    let mut text = Text::from(Spans::from(msg));
+    text.patch_style(style);
+    let help_message = Paragraph::new(text);
+    f.render_widget(help_message, chunks[0]);
+
+    let input = Paragraph::new(app.input.as_ref())
+        .style(match app.app_mode {
+            AppMode::Normal => Style::default(),
+            AppMode::Editing => Style::default().fg(Color::Yellow),
+        })
+        .block(Block::default().borders(Borders::ALL));
+    f.render_widget(input, chunks[2]);
+
 }

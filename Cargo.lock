@@ -351,4 +351,5 @@ dependencies = [
  "crossterm 0.26.1",
  "rand",
  "tui",
+ "unicode-width",
 ]
