@@ -114,54 +114,81 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
 
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(5)
+    let outer_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .margin(0)
         .constraints(
             [
-                Constraint::Min(0),
-                Constraint::Length(3)
+                Constraint::Max(35),
+                Constraint::Length(10)
             ]
             .as_ref(),
         )
         .split(f.size());
     
+    let space = Paragraph::new("");
+    f.render_widget(space.clone(), outer_chunks[1]);
+    
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(0)
+        .constraints(
+            [
+                Constraint::Max(10),
+                Constraint::Min(0),
+                Constraint::Length(3)
+            ]
+            .as_ref(),
+        )
+        .split(outer_chunks[0]);
+    
     let vertical_chunks = Layout::default()
     .direction(Direction::Horizontal)
     .margin(0)
     .constraints(
-        [
-            Constraint::Percentage(20),
-            Constraint::Percentage(20),
-            Constraint::Percentage(20),
-            Constraint::Percentage(20),
-            Constraint::Percentage(20),
+        [   
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(5)
         ]
         .as_ref(),
     )
-    .split(chunks[0]);
+    .split(chunks[1]);
+
+    f.render_widget(space.clone(), vertical_chunks[0]);
+    f.render_widget(space.clone(), vertical_chunks[6]);
 
     for x in 0..5 {
         let horizontal_chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(0)
             .constraints(
-                [
-                    Constraint::Percentage(20),
-                    Constraint::Percentage(20),
-                    Constraint::Percentage(20),
-                    Constraint::Percentage(20),
-                    Constraint::Percentage(20),
+                [   
+                    Constraint::Length(5),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(5),
                 ]
                 .as_ref(),
             )
-            .split(vertical_chunks[x]);
+            .split(vertical_chunks[x+1]);
+    
+        f.render_widget(space.clone(), horizontal_chunks[0]);
+        f.render_widget(space.clone(), horizontal_chunks[6]);
+        
 
         for x in 0..5 {
-            let paragraph = Paragraph::new("hi")
+            let paragraph = Paragraph::new(" A ")
             .style(Style::default().add_modifier(Modifier::BOLD).fg(Color::Yellow))
             .block(Block::default().borders(Borders::ALL));
-            f.render_widget(paragraph, horizontal_chunks[x]); 
+            f.render_widget(paragraph, horizontal_chunks[x+1]); 
         }
 
         
@@ -172,10 +199,10 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     let input = Paragraph::new(&*app.input)
         .style(Style::default().add_modifier(Modifier::BOLD).fg(Color::Yellow))
         .block(Block::default().borders(Borders::ALL).title("Primorial Number Generator"));
-    f.render_widget(input, chunks[1]);
+    f.render_widget(input, chunks[2]);
     f.set_cursor(
-        chunks[1].x + app.input.width() as u16 + 1,
-        chunks[1].y + 1,
+        chunks[2].x + app.input.width() as u16 + 1,
+        chunks[2].y + 1,
     );
 
     //let instructions = String::from("type \"q\" or \"quit\" to quit | press ENTER to submit number | use arrow keys to scroll | type \"write\" to write data to file | type \"read\" to Read Data from file | type \"output\" to enable or disable output");
