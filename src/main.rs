@@ -36,30 +36,20 @@ use std::{error::Error, io};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Span, Spans, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    style::{Color, Style, Modifier},
+    widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
 use unicode_width::UnicodeWidthStr;
 
-enum AppMode {
-    Normal,
-    Editing,
-}
-
 struct App {
     input: String,
-    app_mode: AppMode,
-    wordle: Wordle,
 }
 
 impl Default for App {
     fn default() -> App {
         App {
             input: String::new(),
-            app_mode: AppMode::Normal,
-            wordle: Wordle::default()
         }
     }
 }
@@ -94,96 +84,118 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
         terminal.draw(|f| ui(f, &app))?;
 
         if let Event::Key(key) = event::read()? {
-            match app.app_mode {
-                AppMode::Normal => match key.code {
-                    KeyCode::Char('e') => {
-                        app.app_mode = AppMode::Editing;
+
+                match key.code {
+
+                    KeyCode::Enter => {                        
+                        let drain: String = app.input.drain(..).collect();
+
+                        if drain == String::from("quit") || drain == String::from("q") {
+                            return Ok(());
+                        }
+
                     }
-                    KeyCode::Char('q') => {
-                        return Ok(());
+
+                    KeyCode::Esc => {
+                        return Ok(())
                     }
-                    _ => {}
-                },
-                AppMode::Editing => match key.code {
-                    KeyCode::Enter => {
-                        app.wordle.submit_and_test_guess(app.input.drain(..).collect());
-                    }
+
                     KeyCode::Char(c) => {
                         app.input.push(c);
                     }
                     KeyCode::Backspace => {
                         app.input.pop();
                     }
-                    KeyCode::Esc => {
-                        app.app_mode = AppMode::Normal;
-                    }
                     _ => {}
-                },
             }
         }
     }
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(2)
+        .margin(5)
         .constraints(
             [
-                Constraint::Length(1),
-                Constraint::Min(1),
-                Constraint::Length(3),
+                Constraint::Min(0),
+                Constraint::Length(3)
             ]
             .as_ref(),
         )
         .split(f.size());
+    
+    let vertical_chunks = Layout::default()
+    .direction(Direction::Horizontal)
+    .margin(0)
+    .constraints(
+        [
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+        ]
+        .as_ref(),
+    )
+    .split(chunks[0]);
 
-    let (msg, style) = match app.app_mode {
-        AppMode::Normal => (
-            vec![
-                Span::raw("Press "),
-                Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to exit, "),
-                Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to start editing."),
-            ],
-            Style::default().add_modifier(Modifier::RAPID_BLINK),
-        ),
-        AppMode::Editing => (
-            vec![
-                Span::raw("Press "),
-                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to stop editing, "),
-                Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to record the message"),
-            ],
-            Style::default(),
-        ),
-    };
-
-    match app.app_mode {
-        AppMode::Normal =>
-            {}
-
-        AppMode::Editing => {
-            f.set_cursor(
-                chunks[1].x + app.input.width() as u16 + 1,
-                chunks[1].y + 7,
+    for x in 0..5 {
+        let horizontal_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .margin(0)
+            .constraints(
+                [
+                    Constraint::Percentage(20),
+                    Constraint::Percentage(20),
+                    Constraint::Percentage(20),
+                    Constraint::Percentage(20),
+                    Constraint::Percentage(20),
+                ]
+                .as_ref(),
             )
+            .split(vertical_chunks[x]);
+
+        for x in 0..5 {
+            let paragraph = Paragraph::new("hi")
+            .style(Style::default().add_modifier(Modifier::BOLD).fg(Color::Yellow))
+            .block(Block::default().borders(Borders::ALL));
+            f.render_widget(paragraph, horizontal_chunks[x]); 
         }
+
+        
     }
 
-    let mut text = Text::from(Spans::from(msg));
-    text.patch_style(style);
-    let help_message = Paragraph::new(text);
-    f.render_widget(help_message, chunks[0]);
+    
 
-    let input = Paragraph::new(app.input.as_ref())
-        .style(match app.app_mode {
-            AppMode::Normal => Style::default(),
-            AppMode::Editing => Style::default().fg(Color::Yellow),
-        })
-        .block(Block::default().borders(Borders::ALL));
-    f.render_widget(input, chunks[2]);
+    let input = Paragraph::new(&*app.input)
+        .style(Style::default().add_modifier(Modifier::BOLD).fg(Color::Yellow))
+        .block(Block::default().borders(Borders::ALL).title("Primorial Number Generator"));
+    f.render_widget(input, chunks[1]);
+    f.set_cursor(
+        chunks[1].x + app.input.width() as u16 + 1,
+        chunks[1].y + 1,
+    );
 
+    //let instructions = String::from("type \"q\" or \"quit\" to quit | press ENTER to submit number | use arrow keys to scroll | type \"write\" to write data to file | type \"read\" to Read Data from file | type \"output\" to enable or disable output");
+
+    //let instructions = string_wrap(&instructions, outer_chunks[1].width - 3, &OutputMode::Message);
+
+    //let instructions = Paragraph::new(instructions)
+    //    .style(Style::default().add_modifier(Modifier::BOLD).fg(Color::Yellow))
+    //    .block(Block::default().borders(Borders::ALL));
+
+    //f.render_widget(instructions, outer_chunks[1]);
+}
+
+fn string_wrap(string: &String, chunk_width: u16) -> String {
+    string
+    .chars()
+    .collect::<Vec<_>>()
+    .chunks(chunk_width.into())
+    .into_iter()
+    .map(|chunk| chunk.into_iter().collect::<String>())
+    .collect::<Vec<String>>()
+    .join("\n")
 }
