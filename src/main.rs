@@ -181,7 +181,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
     }
 
     let guesses = &app.wordle.guesses_map;
-    for (row_index, (guess_index, (word, guess))) in
+    for (row_index, (_, (word, guess))) in
         (0..number_of_guesses).into_iter().zip(guesses.iter())
     {
         let column = Layout::default()
