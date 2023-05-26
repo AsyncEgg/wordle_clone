@@ -76,6 +76,11 @@ impl Wordle {
 
     pub fn new_random_word(&mut self) {
         self.word = get_random_line_from_file(FILENAME);
+        self.bad_guess = Vec::new();
+        self.good_guess = Vec::new();
+        self.guesses_map = BTreeMap::new();
+        self.game_state = GameState::Guessing;
+        self.max_number_of_guesses = 5;
     }
 }
 
