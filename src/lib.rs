@@ -7,13 +7,14 @@ use std::{
 
 const FILENAME: &str = "words.txt";
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum LetterMatch {
     Belongs,
     NotInWord,
     BelongsElsewhere,
 }
 
+#[derive(PartialEq)]
 pub enum GameState {
     Guessing,
     Lost,
@@ -22,8 +23,9 @@ pub enum GameState {
 
 pub struct Wordle {
     pub word: String,
-    bad_guess: Vec<char>,
-    good_guess: Vec<char>, //TODO ADD LOGIC TO USE LETTERMATCH INSTEAD OF BOOLS
+    pub perfect_guess: Vec<char>,
+    pub bad_guess: Vec<char>,
+    pub good_guess: Vec<char>, //TODO ADD LOGIC TO USE LETTERMATCH INSTEAD OF BOOLS
     pub guesses_map: BTreeMap<u32, (String, Vec<LetterMatch>)>,
     pub game_state: GameState,
     max_number_of_guesses: u32,
@@ -33,6 +35,7 @@ impl Default for Wordle {
     fn default() -> Self {
         Wordle {
             word: get_random_line_from_file(FILENAME),
+            perfect_guess: Vec::new(),
             bad_guess: Vec::new(),
             good_guess: Vec::new(),
             guesses_map: BTreeMap::new(),
@@ -62,14 +65,17 @@ impl Wordle {
         }
 
         self.guesses_map
-            .insert(self.guesses_map.len() as u32, (guess, matching_letters));
+            .insert(self.guesses_map.len() as u32, (guess, matching_letters.clone()));
 
-        vec_guess.iter().for_each(|c| {
+        vec_guess.iter().enumerate().for_each(|(index,c)| {
             if vec_word.contains(c) && (!self.good_guess.contains(c)) {
                 self.good_guess.push(*c)
             }
             if !vec_word.contains(c) && (!self.bad_guess.contains(c)) {
                 self.bad_guess.push(*c)
+            } 
+            if matching_letters[index] == LetterMatch::Belongs {
+                self.perfect_guess.push(*c)
             }
         });
     }
