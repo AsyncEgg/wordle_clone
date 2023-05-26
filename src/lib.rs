@@ -28,7 +28,7 @@ pub struct Wordle {
     pub good_guess: Vec<char>, //TODO ADD LOGIC TO USE LETTERMATCH INSTEAD OF BOOLS
     pub guesses_map: BTreeMap<u32, (String, Vec<LetterMatch>)>,
     pub game_state: GameState,
-    max_number_of_guesses: u32,
+    pub max_number_of_guesses: u32,
 }
 
 impl Default for Wordle {
